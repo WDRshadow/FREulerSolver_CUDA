@@ -8,7 +8,7 @@ int main(int argc, char **argv)
     return RUN_ALL_TESTS();
 }
 
-TEST(Mesh, fws)
+TEST(MESH, fws)
 {
     Mesh mesh(2, 2, 1.0, 1.0);
     init_fws_mesh(mesh, 1, 1);
@@ -18,7 +18,7 @@ TEST(Mesh, fws)
     EXPECT_EQ(mesh.faces[1].rightCell, X_WALL);
 }
 
-TEST(Mesh, inf)
+TEST(MESH, inf)
 {
     Mesh mesh(2, 2, 1.0, 1.0);
     init_inf_mesh(mesh);

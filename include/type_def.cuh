@@ -43,6 +43,11 @@ struct Vec4
         return Vec4(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w);
     }
 
+    __host__ __device__ Vec4 operator-() const
+    {
+        return Vec4(-x, -y, -z, -w);
+    }
+
     __host__ __device__ Vec4 operator*(double s) const
     {
         return Vec4(x * s, y * s, z * s, w * s);
@@ -89,21 +94,11 @@ struct Face
     Point normal;
 };
 
-struct FaceNumFlux
-{
-    Vec4 f[3];
-};
-
 struct Cell
 {
     int vertexIds[4];
     int faceIds[4];
     bool isValid;
-};
-
-struct CellNode
-{
-    Vec4 nodes[9];
 };
 
 struct Mesh
@@ -114,11 +109,6 @@ struct Mesh
     Point *vertices;
     Face *faces;
     Cell *elements;
-
-    Mesh()
-        : nx(0), ny(0), width(0.0), height(0.0),
-          numVertices(0), numFaces(0), numElements(0),
-          vertices(nullptr), faces(nullptr), elements(nullptr) {}
 
     Mesh(int nx, int ny, double width, double height)
         : nx(nx), ny(ny), width(width), height(height),

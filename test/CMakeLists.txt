@@ -14,6 +14,18 @@ add_test(NAME mesh_init_test COMMAND mesh_init_test)
 
 # -----------------------------------------
 
+add_executable(jacobian_test
+        jacobian_test.cpp
+)
+target_link_libraries(jacobian_test
+        PRIVATE
+        GTest::gtest_main
+        fr
+)
+add_test(NAME jacobian_test COMMAND jacobian_test)
+
+# -----------------------------------------
+
 add_executable(nodes_init_test
         nodes_init_test.cpp
 )
@@ -35,3 +47,15 @@ target_link_libraries(flux_utils_test
         fr
 )
 add_test(NAME flux_utils_test COMMAND flux_utils_test)
+
+# -----------------------------------------
+
+add_executable(solver_test
+        solver_test.cpp
+)
+target_link_libraries(solver_test
+        PRIVATE
+        GTest::gtest_main
+        fr
+)
+add_test(NAME solver_test COMMAND solver_test)

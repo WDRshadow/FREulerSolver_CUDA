@@ -4,7 +4,7 @@
 #include "euler_eq.cuh"
 #include "shape_f.h"
 
-void init_fws_nodes(const Mesh &mesh, CellNode *cell_nodes, const Vec4 &init_P, const double gamma)
+void init_fws_nodes(const Mesh &mesh, Vec4 *nodes, const Vec4 &init_P, double gamma)
 {
     const Vec4 Q0 = toConservative(init_P, gamma);
     for (int i = 0; i < mesh.numElements; ++i)
@@ -13,12 +13,12 @@ void init_fws_nodes(const Mesh &mesh, CellNode *cell_nodes, const Vec4 &init_P, 
             continue;
         for (int j = 0; j < 9; ++j)
         {
-            cell_nodes[i].nodes[j] = Q0;
+            nodes[i * 9 + j] = Q0;
         }
     }
 }
 
-void init_inf_nodes(const Mesh &mesh, CellNode *cell_nodes, const double u_inf, const double v_inf, const double beta, const double gamma)
+void init_inf_nodes(const Mesh &mesh, Vec4 *nodes, const double u_inf, const double v_inf, const double beta, const double gamma)
 {
     const double cx = mesh.width / 2;
     const double cy = mesh.height / 2;
@@ -45,7 +45,7 @@ void init_inf_nodes(const Mesh &mesh, CellNode *cell_nodes, const double u_inf, 
             continue;
         for (int j = 0; j < 9; ++j)
         {
-            cell_nodes[i].nodes[j] = toConservative(getP(i, j), gamma);
+            nodes[i * 9 + j] = toConservative(getP(i, j), gamma);
         }
     }
 }
