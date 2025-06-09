@@ -1,4 +1,5 @@
 #include "jacobian.cuh"
+#include "shape_f.h"
 
 JMatrix2d jacobian_cell(const Mesh &mesh, const int cellId, const int nodeId)
 {
@@ -57,8 +58,7 @@ double jacobian_face(const Mesh &mesh, const int faceId)
             p2 = mesh.vertices[cell.vertexIds[top_idx[1]]];
         }
     }
-    double L = std::sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
-    return 0.5 * L;
+    return 0.5 * std::sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
 }
 
 void calculate_jacobian_face(const Mesh &mesh, double *mesh_jacobian_face)

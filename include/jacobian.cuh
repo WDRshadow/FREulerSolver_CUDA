@@ -4,7 +4,6 @@
 #include <cmath>
 
 #include "type_def.cuh"
-#include "shape_f.h"
 
 struct JMatrix2d
 {
@@ -17,7 +16,7 @@ struct JMatrix2d
 
     __host__ __device__ JMatrix2d inv() const
     {
-        JMatrix2d J_inv;
+        JMatrix2d J_inv{};
         double detJ = det();
         J_inv.J[0][0] = J[1][1] / detJ;
         J_inv.J[0][1] = -J[0][1] / detJ;
@@ -28,7 +27,7 @@ struct JMatrix2d
 
     __host__ __device__ JMatrix2d T() const
     {
-        JMatrix2d J_T;
+        JMatrix2d J_T{};
         J_T.J[0][0] = J[0][0];
         J_T.J[0][1] = J[1][0];
         J_T.J[1][0] = J[0][1];

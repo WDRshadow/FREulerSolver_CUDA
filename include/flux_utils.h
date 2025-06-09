@@ -16,15 +16,14 @@ void calculate_face_num_flux(
     const Flux *d_fluxs,
     Vec4 *d_face_fluxs,
     const Vec4 &bc_Q,
-    const int nx,
-    const int ny,
-    const double gamma);
+    int nx,
+    int ny,
+    double gamma);
 
-void calculate_node_div_flux(
-    const Flux *d_flux,
-    Flux *d_dflux,
-    const int num_elements,
-    const double gamma);
+void calculate_physical_div_flux(
+    const Flux *d_fluxs,
+    Flux *d_dfluxs,
+    int num_elements);
 
 void calculate_rhs(const Cell *d_elements,
                    const Face *d_faces,
@@ -35,8 +34,7 @@ void calculate_rhs(const Cell *d_elements,
                    const double *d_jacobian_det,
                    const double *d_jacobian_face,
                    Vec4 *d_rhs,
-                   const int num_elements,
-                   const double gamma);
+                   int num_elements);
 
 void calculate_time_forward(const Vec4 *d_src_nodes, Vec4 *d_dst_nodes, const Vec4 *d_rhs, double dt, int numElements);
 

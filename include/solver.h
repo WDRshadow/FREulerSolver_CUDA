@@ -3,6 +3,9 @@
 
 #include "flux_utils.h"
 
+#define EULER 1
+#define RK4 4
+
 struct FREulerCache
 {
     const int numElements;
@@ -13,8 +16,14 @@ struct FREulerCache
     Vec4 *d_face_fluxs = nullptr;
     Vec4 *d_rhs = nullptr;
 
-    FREulerCache(const Mesh &mesh);
-    FREulerCache(const Mesh &mesh, const Vec4 *h_nodes);
+    FREulerCache() = delete;
+    FREulerCache(const FREulerCache &) = delete;
+    FREulerCache &operator=(const FREulerCache &) = delete;
+    FREulerCache(FREulerCache &&) = delete;
+    FREulerCache &operator=(FREulerCache &&) = delete;
+
+    explicit FREulerCache(const Mesh &mesh);
+    void setNodes(const Vec4 *h_nodes);
     ~FREulerCache();
 };
 
@@ -22,13 +31,18 @@ class FREulerSolver
 {
 public:
     FREulerSolver() = delete;
+    FREulerSolver(const FREulerSolver &) = delete;
+    FREulerSolver &operator=(const FREulerSolver &) = delete;
+    FREulerSolver(FREulerSolver &&) = delete;
+    FREulerSolver &operator=(FREulerSolver &&) = delete;
+
     FREulerSolver(const Mesh &mesh, const Vec4 *h_nodes);
     ~FREulerSolver();
     void setGamma(double g);
     void set_fws_bc(const Vec4 &bc);
-    void advance(double dt);
+    void advance(double dt, int method = RK4);
     double getCurrentTime() const;
-    void getNodes(Vec4 *h_nodes);
+    void getNodes(Vec4 *h_nodes) const;
 
 private:
     const int nx, ny;
@@ -47,7 +61,7 @@ private:
     FREulerCache k3;
     FREulerCache k4;
 
-    void computeRHS(FREulerCache &cache);
+    void computeRHS(const FREulerCache &cache) const;
 };
 
 #endif // SOLVER_H

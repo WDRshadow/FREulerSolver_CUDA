@@ -55,15 +55,16 @@ TEST(FLUX, num_flux)
     cudaMalloc(&d_fluxs, sizeof(Flux) * mesh.numElements * 9);
     cudaMalloc(&d_face_fluxs, sizeof(Vec4) * mesh.numFaces * 3);
     // ---------------------------------------------------
+    cudaMemcpy(d_faces, mesh.faces, sizeof(Face) * mesh.numFaces, cudaMemcpyHostToDevice);
     cudaMemcpy(d_nodes, h_nodes, sizeof(Vec4) * mesh.numElements * 9, cudaMemcpyHostToDevice);
     calculate_physical_flux(d_nodes, d_fluxs, mesh.numElements, GAMMA);
     calculate_face_num_flux(d_faces, d_nodes, d_fluxs, d_face_fluxs, init_Q, mesh.nx, mesh.ny, GAMMA);
     cudaMemcpy(h_face_fluxs, d_face_fluxs, sizeof(Vec4) * mesh.numFaces * 3, cudaMemcpyDeviceToHost);
     // ---------------------------------------------------
-    EXPECT_DOUBLE_EQ(h_face_fluxs[0][0], 0.0);
-    EXPECT_DOUBLE_EQ(h_face_fluxs[0][1], 0.0);
+    EXPECT_DOUBLE_EQ(h_face_fluxs[0][0], 4.2);
+    EXPECT_DOUBLE_EQ(h_face_fluxs[0][1], 13.6);
     EXPECT_DOUBLE_EQ(h_face_fluxs[0][2], 0.0);
-    EXPECT_DOUBLE_EQ(h_face_fluxs[0][3], 0.0);
+    EXPECT_DOUBLE_EQ(h_face_fluxs[0][3], 29.4);
     // ---------------------------------------------------
     cudaFree(d_nodes);
     cudaFree(d_fluxs);
@@ -88,14 +89,14 @@ TEST(FLUX, div_flux)
     cudaMalloc(&d_dfluxs, sizeof(Flux) * mesh.numElements * 9);
     // ---------------------------------------------------
     cudaMemcpy(d_nodes, h_nodes, sizeof(Vec4) * mesh.numElements * 9, cudaMemcpyHostToDevice);
-    calculate_physical_flux(d_nodes, d_dfluxs, mesh.numElements, GAMMA);
-    calculate_node_div_flux(d_fluxs, d_dfluxs, mesh.numElements, GAMMA);
+    calculate_physical_flux(d_nodes, d_fluxs, mesh.numElements, GAMMA);
+    calculate_physical_div_flux(d_fluxs, d_dfluxs, mesh.numElements);
     cudaMemcpy(h_dfluxs, d_dfluxs, sizeof(Flux) * mesh.numElements * 9, cudaMemcpyDeviceToHost);
     // ---------------------------------------------------
-    EXPECT_DOUBLE_EQ(h_dfluxs[0].f[0], 0.0);
-    EXPECT_DOUBLE_EQ(h_dfluxs[0].f[1], 0.0);
-    EXPECT_DOUBLE_EQ(h_dfluxs[0].f[2], 0.0);
-    EXPECT_DOUBLE_EQ(h_dfluxs[0].f[3], 0.0);
+    EXPECT_NEAR(h_dfluxs[0].f[0], 0.0, 1e-6);
+    EXPECT_NEAR(h_dfluxs[0].f[1], 0.0, 1e-6);
+    EXPECT_NEAR(h_dfluxs[0].f[2], 0.0, 1e-6);
+    EXPECT_NEAR(h_dfluxs[0].f[3], 0.0, 1e-6);
     // ---------------------------------------------------
     cudaFree(d_nodes);
     cudaFree(d_fluxs);
@@ -106,14 +107,14 @@ TEST(FLUX, div_flux)
 
 TEST(FLUX, rhs)
 {
-    Mesh mesh(2, 2, 2, 2);
+    Mesh mesh(1, 1, 1, 1);
     const Vec4 init_P(1.4, 3.0, 0.0, 1.0);
     const Vec4 init_Q = toConservative(init_P, GAMMA);
     Vec4 *h_nodes = new Vec4[mesh.numElements * 9];
-    JMatrix2d *h_jacobian_invT = new JMatrix2d[mesh.numElements * 9];
-    double *h_jacobian_det = new double[mesh.numElements * 9];
-    double *h_jacobian_face = new double[mesh.numFaces * 3];
-    init_fws_mesh(mesh, 1, 1);
+    auto *h_jacobian_invT = new JMatrix2d[mesh.numElements * 9];
+    auto *h_jacobian_det = new double[mesh.numElements * 9];
+    auto *h_jacobian_face = new double[mesh.numFaces];
+    init_fws_mesh(mesh, 0, 0);
     init_fws_nodes(mesh, h_nodes, init_P, GAMMA);
     calculate_jacobian_cell(mesh, h_jacobian_invT, h_jacobian_det);
     calculate_jacobian_face(mesh, h_jacobian_face);
@@ -131,12 +132,12 @@ TEST(FLUX, rhs)
     cudaMalloc(&d_nodes, sizeof(Vec4) * mesh.numElements * 9);
     cudaMalloc(&d_fluxs, sizeof(Flux) * mesh.numElements * 9);
     cudaMalloc(&d_dfluxs, sizeof(Flux) * mesh.numElements * 9);
-    cudaMalloc(&d_elements, sizeof(Cell) * mesh.numElements * 9);
-    cudaMalloc(&d_faces, sizeof(Face) * mesh.numElements * 9);
+    cudaMalloc(&d_elements, sizeof(Cell) * mesh.numElements);
+    cudaMalloc(&d_faces, sizeof(Face) * mesh.numFaces);
     cudaMalloc(&d_face_fluxs, sizeof(Vec4) * mesh.numFaces * 3);
     cudaMalloc(&d_jacobian_invT, sizeof(JMatrix2d) * mesh.numElements * 9);
     cudaMalloc(&d_jacobian_det, sizeof(double) * mesh.numElements * 9);
-    cudaMalloc(&d_jacobian_face, sizeof(double) * mesh.numFaces * 3);
+    cudaMalloc(&d_jacobian_face, sizeof(double) * mesh.numFaces);
     cudaMalloc(&d_rhs, sizeof(Vec4) * mesh.numElements * 9);
     // ---------------------------------------------------
     cudaMemcpy(d_elements, mesh.elements, sizeof(Cell) * mesh.numElements, cudaMemcpyHostToDevice);
@@ -144,12 +145,19 @@ TEST(FLUX, rhs)
     cudaMemcpy(d_nodes, h_nodes, sizeof(Vec4) * mesh.numElements * 9, cudaMemcpyHostToDevice);
     cudaMemcpy(d_jacobian_invT, h_jacobian_invT, sizeof(JMatrix2d) * mesh.numElements * 9, cudaMemcpyHostToDevice);
     cudaMemcpy(d_jacobian_det, h_jacobian_det, sizeof(double) * mesh.numElements * 9, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_jacobian_face, h_jacobian_face, sizeof(double) * mesh.numFaces * 3, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_jacobian_face, h_jacobian_face, sizeof(double) * mesh.numFaces, cudaMemcpyHostToDevice);
     // ---------------------------------------------------
     calculate_physical_flux(d_nodes, d_fluxs, mesh.numElements, GAMMA);
-    calculate_node_div_flux(d_fluxs, d_dfluxs, mesh.numElements, GAMMA);
+    calculate_physical_div_flux(d_fluxs, d_dfluxs, mesh.numElements);
     calculate_face_num_flux(d_faces, d_nodes, d_fluxs, d_face_fluxs, init_Q, mesh.nx, mesh.ny, GAMMA);
-    calculate_rhs(d_elements, d_faces, d_fluxs, d_dfluxs, d_face_fluxs, d_jacobian_invT, d_jacobian_det, d_jacobian_face, d_rhs, mesh.numElements, GAMMA);
+    calculate_rhs(d_elements, d_faces, d_fluxs, d_dfluxs, d_face_fluxs, d_jacobian_invT, d_jacobian_det, d_jacobian_face, d_rhs, mesh.numElements);
+    // ---------------------------------------------------
+    cudaMemcpy(h_nodes, d_rhs, sizeof(Vec4) * mesh.numElements * 9, cudaMemcpyDeviceToHost);
+    // ---------------------------------------------------
+    EXPECT_DOUBLE_EQ(h_nodes[8][0], 0.0);
+    EXPECT_DOUBLE_EQ(h_nodes[8][1], 0.0);
+    EXPECT_DOUBLE_EQ(h_nodes[8][2], 0.0);
+    EXPECT_DOUBLE_EQ(h_nodes[8][3], 0.0);
     // ---------------------------------------------------
     cudaFree(d_nodes);
     cudaFree(d_fluxs);

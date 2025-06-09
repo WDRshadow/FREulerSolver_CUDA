@@ -20,42 +20,42 @@ struct Vec4
     double x, y, z, w;
 
     __host__ __device__ Vec4() : x(0), y(0), z(0), w(0) {}
-    __host__ __device__ Vec4(double x, double y, double z, double w)
+    __host__ __device__ Vec4(const double x, const double y, const double z, const double w)
         : x(x), y(y), z(z), w(w) {}
 
-    __host__ __device__ double &operator[](int i)
+    __host__ __device__ double &operator[](const int i)
     {
-        return *((&x) + i);
+        return *(&x + i);
     }
 
-    __host__ __device__ const double &operator[](int i) const
+    __host__ __device__ const double &operator[](const int i) const
     {
-        return *((&x) + i);
+        return *(&x + i);
     }
 
     __host__ __device__ Vec4 operator+(const Vec4 &rhs) const
     {
-        return Vec4(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w);
+        return {x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w};
     }
 
     __host__ __device__ Vec4 operator-(const Vec4 &rhs) const
     {
-        return Vec4(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w);
+        return {x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w};
     }
 
     __host__ __device__ Vec4 operator-() const
     {
-        return Vec4(-x, -y, -z, -w);
+        return {-x, -y, -z, -w};
     }
 
-    __host__ __device__ Vec4 operator*(double s) const
+    __host__ __device__ Vec4 operator*(const double s) const
     {
-        return Vec4(x * s, y * s, z * s, w * s);
+        return {x * s, y * s, z * s, w * s};
     }
 
-    __host__ __device__ Vec4 operator/(double s) const
+    __host__ __device__ Vec4 operator/(const double s) const
     {
-        return Vec4(x / s, y / s, z / s, w / s);
+        return {x / s, y / s, z / s, w / s};
     }
 
     __host__ __device__ Vec4 &operator+=(const Vec4 &rhs)
@@ -67,7 +67,7 @@ struct Vec4
         return *this;
     }
 
-    __host__ __device__ Vec4 &operator*=(double s)
+    __host__ __device__ Vec4 &operator*=(const double s)
     {
         x *= s;
         y *= s;
@@ -80,6 +80,11 @@ struct Vec4
 struct Point
 {
     double x, y;
+
+    __host__ __device__ Point operator-() const
+    {
+        return {-x, -y};
+    }
 };
 
 struct Flux
@@ -106,11 +111,17 @@ struct Mesh
     int nx, ny;
     double width, height;
     int numVertices, numFaces, numElements;
-    Point *vertices;
-    Face *faces;
-    Cell *elements;
+    Point *vertices = nullptr;
+    Face *faces = nullptr;
+    Cell *elements = nullptr;
 
-    Mesh(int nx, int ny, double width, double height)
+    Mesh() = delete;
+    Mesh(const Mesh &) = delete;
+    Mesh &operator=(const Mesh &) = delete;
+    Mesh(Mesh &&) = delete;
+    Mesh &operator=(Mesh &&) = delete;
+
+    Mesh(const int nx, const int ny, const double width, const double height)
         : nx(nx), ny(ny), width(width), height(height),
           numVertices((nx + 1) * (ny + 1)), numFaces(nx * (ny + 1) + ny * (nx + 1)),
           numElements(nx * ny)
@@ -122,9 +133,12 @@ struct Mesh
 
     ~Mesh()
     {
-        delete[] vertices;
-        delete[] faces;
-        delete[] elements;
+        if (vertices)
+            delete[] vertices;
+        if (faces)
+            delete[] faces;
+        if (elements)
+            delete[] elements;
     }
 };
 

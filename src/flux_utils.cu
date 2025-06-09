@@ -2,11 +2,11 @@
 #include "euler_eq.cuh"
 #include "jacobian.cuh"
 
-#define BLOCK_SIZE 512
+#define BLOCK_SIZE 256
 
 __global__ void physical_flux_kernel(const Vec4 *d_nodes, Flux *d_fluxs, const int num_elements, const double gamma)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_elements)
     {
         return;
@@ -20,9 +20,8 @@ __global__ void physical_flux_kernel(const Vec4 *d_nodes, Flux *d_fluxs, const i
     }
 }
 
-void calculate_physical_flux(const Vec4 *d_nodes, Flux *d_fluxs, int num_elements, double gamma)
+void calculate_physical_flux(const Vec4 *d_nodes, Flux *d_fluxs, const int num_elements, const double gamma)
 {
-
     const int num_blocks = (num_elements + BLOCK_SIZE - 1) / BLOCK_SIZE;
     physical_flux_kernel<<<num_blocks, BLOCK_SIZE>>>(d_nodes, d_fluxs, num_elements, gamma);
     cudaDeviceSynchronize();
@@ -53,7 +52,8 @@ __device__ __forceinline__ Vec4 l_f_flux(
     return (FL.f * nx + FL.g * ny + FR.f * nx + FR.g * ny) * 0.5 - (QR - QL) * 0.5 * s;
 }
 
-__device__ __forceinline__ void set_bc(const Vec4 &bc, const Vec4 *Q, const int bc_type, Vec4 *nodes, Flux *face_flux, double gamma)
+__device__ __forceinline__ void set_bc(const Vec4 &bc, const Vec4 *Q, const int bc_type, Vec4 *nodes, Flux *face_flux,
+                                       const double gamma)
 {
     for (int j = 0; j < 3; ++j)
     {
@@ -101,7 +101,7 @@ __global__ void face_num_flux_kernel(
     const Vec4 bc,
     const double gamma)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     const int numVerticalFace = (nx + 1) * ny;
     const int numHorizontalFace = nx * (ny + 1);
     if (i >= numVerticalFace + numHorizontalFace)
@@ -110,27 +110,27 @@ __global__ void face_num_flux_kernel(
     }
     const Face &face = d_faces[i];
     const Point &normal = face.normal;
-    constexpr int left_idx[] = {2, 3, 4};
-    constexpr int right_idx[] = {0, 7, 6};
+    constexpr int left_idx[] = {0, 7, 6};
+    constexpr int right_idx[] = {2, 3, 4};
     constexpr int bottom_idx[] = {0, 1, 2};
     constexpr int top_idx[] = {6, 5, 4};
     if (face.leftCell < 0 && face.rightCell < 0)
     {
         return;
     }
-    Vec4 l_nodes[3]{}, r_nodes[3]{};
-    Flux l_fluxs[3]{}, r_fluxs[3]{};
+    Vec4 l_nodes[3], r_nodes[3];
+    Flux l_fluxs[3], r_fluxs[3];
     if (face.leftCell >= 0)
     {
         const Vec4 *left_node = d_nodes + face.leftCell * 9;
         const Flux *left_flux = d_fluxs + face.leftCell * 9;
         if (i < numVerticalFace)
         {
-            set_nodes(left_node, left_flux, l_nodes, l_fluxs, left_idx);
+            set_nodes(left_node, left_flux, l_nodes, l_fluxs, right_idx);
         }
         else
         {
-            set_nodes(left_node, left_flux, l_nodes, l_fluxs, bottom_idx);
+            set_nodes(left_node, left_flux, l_nodes, l_fluxs, top_idx);
         }
     }
     if (face.rightCell >= 0)
@@ -139,11 +139,11 @@ __global__ void face_num_flux_kernel(
         const Flux *right_flux = d_fluxs + face.rightCell * 9;
         if (i < numVerticalFace)
         {
-            set_nodes(right_node, right_flux, r_nodes, r_fluxs, right_idx);
+            set_nodes(right_node, right_flux, r_nodes, r_fluxs, left_idx);
         }
         else
         {
-            set_nodes(right_node, right_flux, r_nodes, r_fluxs, top_idx);
+            set_nodes(right_node, right_flux, r_nodes, r_fluxs, bottom_idx);
         }
     }
     if (face.leftCell < 0)
@@ -170,7 +170,7 @@ void calculate_face_num_flux(
     const int ny,
     const double gamma)
 {
-    int numFaces = (nx + 1) * ny + nx * (ny + 1);
+    const int numFaces = (nx + 1) * ny + nx * (ny + 1);
     const int num_blocks = (numFaces + BLOCK_SIZE - 1) / BLOCK_SIZE;
     face_num_flux_kernel<<<num_blocks, BLOCK_SIZE>>>(d_faces, d_nodes, d_fluxs, d_face_fluxs, nx, ny, bc_Q, gamma);
     cudaDeviceSynchronize();
@@ -220,53 +220,51 @@ __device__ __forceinline__ int idx_eta(const int i)
 
 __device__ __forceinline__ double l_2d(const int i, const double xi, const double eta)
 {
-    return l_1d(idx_xi(i), xi) * l_1d(idx_eta(i), eta);
+    return l_1d(idx_xi(i) + 1, xi) * l_1d(idx_eta(i) + 1, eta);
 }
 
 __device__ __forceinline__ double dl_dxi(const int i, const double xi, const double eta)
 {
-    return dl_1d(idx_xi(i), xi) * l_1d(idx_eta(i), eta);
+    return dl_1d(idx_xi(i) + 1, xi) * l_1d(idx_eta(i) + 1, eta);
 }
 
 __device__ __forceinline__ double dl_deta(const int i, const double xi, const double eta)
 {
-    return l_1d(idx_xi(i), xi) * dl_1d(idx_eta(i), eta);
+    return l_1d(idx_xi(i) + 1, xi) * dl_1d(idx_eta(i) + 1, eta);
 }
 
 __global__ void div_flux_kernel(
     const Flux *d_fluxs,
     Flux *d_dfluxs,
-    const int num_elements,
-    const double gamma)
+    const int num_elements)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_elements)
     {
         return;
     }
     const Flux *flux = d_fluxs + i * 9;
-    Flux *d_dflux = d_dfluxs + i * 9;
+    Flux *dflux = d_dfluxs + i * 9;
     for (int _i = 0; _i < 9; ++_i)
     {
-        d_dflux[_i] = Flux();
+        dflux[_i] = Flux();
         for (int _j = 0; _j < 9; ++_j)
         {
             const double dl_dxi_ = dl_dxi(_j, idx_xi(_i), idx_eta(_i));
             const double dl_deta_ = dl_deta(_j, idx_xi(_i), idx_eta(_i));
-            d_dflux[_i].f += flux[_j].f * dl_dxi_;
-            d_dflux[_i].g += flux[_j].g * dl_deta_;
+            dflux[_i].f += flux[_j].f * dl_dxi_;
+            dflux[_i].g += flux[_j].g * dl_deta_;
         }
     }
 }
 
-void calculate_node_div_flux(
+void calculate_physical_div_flux(
     const Flux *d_fluxs,
     Flux *d_dfluxs,
-    const int num_elements,
-    const double gamma)
+    const int num_elements)
 {
     const int num_blocks = (num_elements + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    div_flux_kernel<<<num_blocks, BLOCK_SIZE>>>(d_fluxs, d_dfluxs, num_elements, gamma);
+    div_flux_kernel<<<num_blocks, BLOCK_SIZE>>>(d_fluxs, d_dfluxs, num_elements);
     cudaDeviceSynchronize();
 }
 
@@ -293,10 +291,9 @@ __global__ void rhs_kernel(const Cell *d_elements,
                            const double *d_jacobian_det,
                            const double *d_jacobian_face,
                            Vec4 *d_rhs,
-                           const int num_elements,
-                           const double gamma)
+                           const int num_elements)
 {
-    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_elements)
     {
         return;
@@ -321,16 +318,23 @@ __global__ void rhs_kernel(const Cell *d_elements,
     const double *jacobian_det = d_jacobian_det + i * 9;
     Vec4 *rhs = d_rhs + i * 9;
 
-    constexpr double DG2R[3] = {1.5, -0.75, 4.5};
-
-    Flux dflux_corr[9];
     for (int j = 0; j < 9; ++j)
     {
         const int xi = idx_xi(j);
         const int eta = idx_eta(j);
-        dflux_corr[j].f = dflux[j].f + ((left_face_flux[j] - normal_flux(flux[xi_eta_idx(-1, eta)], left_face.normal)) * DG2R[-xi + 1] * left_face_jacobian + (right_face_flux[j] - normal_flux(flux[xi_eta_idx(1, eta)], right_face.normal)) * DG2R[xi + 1] * right_face_jacobian) / jacobian_det[j];
-        dflux_corr[j].g = dflux[j].g + ((bottom_face_flux[j] - normal_flux(flux[xi_eta_idx(xi, -1)], bottom_face.normal)) * DG2R[-eta + 1] * bottom_face_jacobian + (top_face_flux[j] - normal_flux(flux[xi_eta_idx(xi, 1)], top_face.normal)) * DG2R[eta + 1] * top_face_jacobian) / jacobian_det[j];
-        const Flux div_flux = jacobian_invT[j] * dflux_corr[j];
+        constexpr double DG2R[3] = {1.5, -0.75, 4.5};
+        Flux dflux_corr;
+        dflux_corr.f = dflux[j].f + ((-left_face_flux[eta + 1] - normal_flux(flux[xi_eta_idx(-1, eta)], -left_face.normal)) *
+                                         DG2R[-xi + 1] * left_face_jacobian +
+                                     (right_face_flux[eta + 1] - normal_flux(flux[xi_eta_idx(1, eta)], right_face.normal)) *
+                                         DG2R[xi + 1] * right_face_jacobian) /
+                                        jacobian_det[j];
+        dflux_corr.g = dflux[j].g + ((-bottom_face_flux[xi + 1] - normal_flux(flux[xi_eta_idx(xi, -1)], -bottom_face.normal)) *
+                                         DG2R[-eta + 1] * bottom_face_jacobian +
+                                     (top_face_flux[xi + 1] - normal_flux(flux[xi_eta_idx(xi, 1)], top_face.normal)) *
+                                         DG2R[eta + 1] * top_face_jacobian) /
+                                        jacobian_det[j];
+        const Flux div_flux = jacobian_invT[j] * dflux_corr;
         rhs[j] = -(div_flux.f + div_flux.g);
     }
 }
@@ -344,17 +348,18 @@ void calculate_rhs(const Cell *d_elements,
                    const double *d_jacobian_det,
                    const double *d_jacobian_face,
                    Vec4 *d_rhs,
-                   const int num_elements,
-                   const double gamma)
+                   const int num_elements)
 {
     const int num_blocks = (num_elements + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    rhs_kernel<<<num_blocks, BLOCK_SIZE>>>(d_elements, d_faces, d_fluxs, d_dfluxs, d_face_fluxs, d_jacobian_invT, d_jacobian_det, d_jacobian_face, d_rhs, num_elements, gamma);
+    rhs_kernel<<<num_blocks, BLOCK_SIZE>>>(d_elements, d_faces, d_fluxs, d_dfluxs, d_face_fluxs, d_jacobian_invT,
+                                           d_jacobian_det, d_jacobian_face, d_rhs, num_elements);
     cudaDeviceSynchronize();
 }
 
-__global__ void time_forward_kernel(const Vec4 *d_src_nodes, Vec4 *d_dst_nodes, const Vec4 *d_rhs, const double dt, const int numElements)
+__global__ void time_forward_kernel(const Vec4 *d_src_nodes, Vec4 *d_dst_nodes, const Vec4 *d_rhs, const double dt,
+                                    const int numElements)
 {
-    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numElements)
     {
         return;
@@ -368,9 +373,10 @@ __global__ void time_forward_kernel(const Vec4 *d_src_nodes, Vec4 *d_dst_nodes, 
     }
 }
 
-void calculate_time_forward(const Vec4 *d_src_nodes, Vec4 *d_dst_nodes, const Vec4 *d_rhs, const double dt, const int numElements)
+void calculate_time_forward(const Vec4 *d_src_nodes, Vec4 *d_dst_nodes, const Vec4 *d_rhs, const double dt,
+                            const int numElements)
 {
     const int num_blocks = (numElements + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    time_forward_kernel<<<num_blocks, BLOCK_SIZE>>>(d_dst_nodes, d_dst_nodes, d_rhs, dt, numElements);
+    time_forward_kernel<<<num_blocks, BLOCK_SIZE>>>(d_src_nodes, d_dst_nodes, d_rhs, dt, numElements);
     cudaDeviceSynchronize();
 }
