@@ -59,3 +59,15 @@ target_link_libraries(solver_test
         fr
 )
 add_test(NAME solver_test COMMAND solver_test)
+
+# -----------------------------------------
+
+add_executable(visualize_test
+        visualize_test.cpp
+)
+target_link_libraries(visualize_test
+        PRIVATE
+        GTest::gtest_main
+        fr
+)
+add_test(NAME visualize_test COMMAND visualize_test)

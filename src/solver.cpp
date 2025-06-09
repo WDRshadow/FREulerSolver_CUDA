@@ -1,6 +1,5 @@
 #include "solver.h"
 #include "mesh_init.h"
-#include "nodes_init.h"
 #include "flux_utils.h"
 #include "jacobian.cuh"
 #include "euler_eq.cuh"
