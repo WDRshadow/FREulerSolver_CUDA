@@ -66,6 +66,7 @@ TEST(FLUX, num_flux)
     EXPECT_DOUBLE_EQ(h_face_fluxs[0][2], 0.0);
     EXPECT_DOUBLE_EQ(h_face_fluxs[0][3], 29.4);
     // ---------------------------------------------------
+    cudaFree(d_faces);
     cudaFree(d_nodes);
     cudaFree(d_fluxs);
     cudaFree(d_face_fluxs);
@@ -111,7 +112,7 @@ TEST(FLUX, rhs)
     const Vec4 init_P(1.4, 3.0, 0.0, 1.0);
     const Vec4 init_Q = toConservative(init_P, GAMMA);
     Vec4 *h_nodes = new Vec4[mesh.numElements * 9];
-    auto *h_jacobian_invT = new JMatrix2d[mesh.numElements * 9];
+    auto *h_jacobian_invT = new Matrix2d[mesh.numElements * 9];
     auto *h_jacobian_det = new double[mesh.numElements * 9];
     auto *h_jacobian_face = new double[mesh.numFaces];
     init_fws_mesh(mesh, 0, 0);
@@ -125,7 +126,7 @@ TEST(FLUX, rhs)
     Cell *d_elements = nullptr;
     Face *d_faces = nullptr;
     Vec4 *d_face_fluxs = nullptr;
-    JMatrix2d *d_jacobian_invT = nullptr;
+    Matrix2d *d_jacobian_invT = nullptr;
     double *d_jacobian_det = nullptr;
     double *d_jacobian_face = nullptr;
     Vec4 *d_rhs = nullptr;
@@ -135,7 +136,7 @@ TEST(FLUX, rhs)
     cudaMalloc(&d_elements, sizeof(Cell) * mesh.numElements);
     cudaMalloc(&d_faces, sizeof(Face) * mesh.numFaces);
     cudaMalloc(&d_face_fluxs, sizeof(Vec4) * mesh.numFaces * 3);
-    cudaMalloc(&d_jacobian_invT, sizeof(JMatrix2d) * mesh.numElements * 9);
+    cudaMalloc(&d_jacobian_invT, sizeof(Matrix2d) * mesh.numElements * 9);
     cudaMalloc(&d_jacobian_det, sizeof(double) * mesh.numElements * 9);
     cudaMalloc(&d_jacobian_face, sizeof(double) * mesh.numFaces);
     cudaMalloc(&d_rhs, sizeof(Vec4) * mesh.numElements * 9);
@@ -143,7 +144,7 @@ TEST(FLUX, rhs)
     cudaMemcpy(d_elements, mesh.elements, sizeof(Cell) * mesh.numElements, cudaMemcpyHostToDevice);
     cudaMemcpy(d_faces, mesh.faces, sizeof(Face) * mesh.numFaces, cudaMemcpyHostToDevice);
     cudaMemcpy(d_nodes, h_nodes, sizeof(Vec4) * mesh.numElements * 9, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_jacobian_invT, h_jacobian_invT, sizeof(JMatrix2d) * mesh.numElements * 9, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_jacobian_invT, h_jacobian_invT, sizeof(Matrix2d) * mesh.numElements * 9, cudaMemcpyHostToDevice);
     cudaMemcpy(d_jacobian_det, h_jacobian_det, sizeof(double) * mesh.numElements * 9, cudaMemcpyHostToDevice);
     cudaMemcpy(d_jacobian_face, h_jacobian_face, sizeof(double) * mesh.numFaces, cudaMemcpyHostToDevice);
     // ---------------------------------------------------

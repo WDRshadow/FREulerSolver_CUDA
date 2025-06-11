@@ -26,7 +26,7 @@ TEST(JACOBIAN, cell)
 {
     Mesh mesh(1, 1, 1.0, 1.0);
     init_fws_mesh(mesh, 0, 0);
-    JMatrix2d *mesh_jacobian_cell_invT = new JMatrix2d[mesh.numElements * 9];
+    Matrix2d *mesh_jacobian_cell_invT = new Matrix2d[mesh.numElements * 9];
     double *mesh_jacobian_cell_det = new double[mesh.numElements * 9];
     calculate_jacobian_cell(mesh, mesh_jacobian_cell_invT, mesh_jacobian_cell_det);
     for (int i = 0; i < mesh.numElements * 9; ++i)

@@ -5,6 +5,7 @@
 #include "flux_utils.h"
 #include "jacobian.cuh"
 #include "euler_eq.cuh"
+#include "limiter.h"
 
 FREulerCache::FREulerCache(const Mesh &mesh)
     : numElements(mesh.numElements), numFaces(mesh.numFaces)
@@ -40,19 +41,19 @@ FREulerSolver::FREulerSolver(const Mesh &mesh, const Vec4 *h_nodes)
       k3(FREulerCache(mesh)), k4(FREulerCache(mesh))
 {
     k1.setNodes(h_nodes);
-    auto *h_jacobian_invT = new JMatrix2d[mesh.numElements * 9];
+    auto *h_jacobian_invT = new Matrix2d[mesh.numElements * 9];
     auto *h_jacobian_det = new double[mesh.numElements * 9];
     auto *h_jacobian_face = new double[mesh.numFaces * 3];
     calculate_jacobian_cell(mesh, h_jacobian_invT, h_jacobian_det);
     calculate_jacobian_face(mesh, h_jacobian_face);
     cudaMalloc(&d_elements, sizeof(Cell) * mesh.numElements * 9);
     cudaMalloc(&d_faces, sizeof(Face) * mesh.numElements * 9);
-    cudaMalloc(&d_jacobian_invT, sizeof(JMatrix2d) * mesh.numElements * 9);
+    cudaMalloc(&d_jacobian_invT, sizeof(Matrix2d) * mesh.numElements * 9);
     cudaMalloc(&d_jacobian_det, sizeof(double) * mesh.numElements * 9);
     cudaMalloc(&d_jacobian_face, sizeof(double) * mesh.numFaces * 3);
     cudaMemcpy(d_elements, mesh.elements, sizeof(Cell) * mesh.numElements, cudaMemcpyHostToDevice);
     cudaMemcpy(d_faces, mesh.faces, sizeof(Face) * mesh.numFaces, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_jacobian_invT, h_jacobian_invT, sizeof(JMatrix2d) * mesh.numElements * 9, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_jacobian_invT, h_jacobian_invT, sizeof(Matrix2d) * mesh.numElements * 9, cudaMemcpyHostToDevice);
     cudaMemcpy(d_jacobian_det, h_jacobian_det, sizeof(double) * mesh.numElements * 9, cudaMemcpyHostToDevice);
     cudaMemcpy(d_jacobian_face, h_jacobian_face, sizeof(double) * mesh.numFaces * 3, cudaMemcpyHostToDevice);
     delete[] h_jacobian_invT;
@@ -72,6 +73,8 @@ FREulerSolver::~FREulerSolver()
         cudaFree(d_jacobian_det);
     if (d_jacobian_face)
         cudaFree(d_jacobian_face);
+    if (d_tmp_nodes)
+        cudaFree(d_tmp_nodes);
 }
 
 void FREulerSolver::setGamma(const double g)
@@ -82,6 +85,13 @@ void FREulerSolver::setGamma(const double g)
 void FREulerSolver::set_fws_bc(const Vec4 &bc)
 {
     bc_P = bc;
+}
+
+void FREulerSolver::set_tvb_limiter(double M)
+{
+    isLimiter = true;
+    this->M = M;
+    cudaMalloc(&d_tmp_nodes, sizeof(Vec4) * k1.numElements * 9);
 }
 
 double FREulerSolver::getCurrentTime() const
@@ -121,8 +131,21 @@ void FREulerSolver::computeRHS(const FREulerCache &cache) const
         cache.numElements);
 }
 
+void FREulerSolver::limit(const FREulerCache &cache)
+{
+    if (isLimiter)
+    {
+        tvd_limiter(d_elements, d_faces, cache.d_nodes, d_tmp_nodes, cache.numElements, bc_P, gamma, M);
+        cudaMemcpy(cache.d_nodes, d_tmp_nodes, sizeof(Vec4) * cache.numElements * 9, cudaMemcpyDeviceToDevice);
+    }
+}
+
 void FREulerSolver::advance(const double dt, const int method)
 {
+    if (currentTime < 1e-10)
+    {
+        limit(k1);
+    }
     switch (method)
     {
     case EULER:
@@ -135,10 +158,13 @@ void FREulerSolver::advance(const double dt, const int method)
     {
         computeRHS(k1);
         calculate_time_forward(k1.d_nodes, k2.d_nodes, k1.d_rhs, dt / 2, k1.numElements);
+        limit(k2);
         computeRHS(k2);
         calculate_time_forward(k1.d_nodes, k3.d_nodes, k2.d_rhs, dt / 2, k1.numElements);
+        limit(k3);
         computeRHS(k3);
         calculate_time_forward(k1.d_nodes, k4.d_nodes, k3.d_rhs, dt, k1.numElements);
+        limit(k4);
         computeRHS(k4);
         calculate_time_forward(k1.d_nodes, k1.d_nodes, k1.d_rhs, dt / 6, k1.numElements);
         calculate_time_forward(k1.d_nodes, k1.d_nodes, k2.d_rhs, dt / 3, k1.numElements);
@@ -149,5 +175,6 @@ void FREulerSolver::advance(const double dt, const int method)
     default:
         throw std::invalid_argument("Unsupported method for time advancement.");
     }
+    limit(k1);
     currentTime += dt;
 }

@@ -3,6 +3,8 @@
 
 #include <cuda_runtime.h>
 
+#define BLOCK_SIZE 256
+
 #define GAMMA 1.4
 
 #define X_WALL (-1)

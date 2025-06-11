@@ -2,8 +2,6 @@
 #include "euler_eq.cuh"
 #include "jacobian.cuh"
 
-#define BLOCK_SIZE 256
-
 __global__ void physical_flux_kernel(const Vec4 *d_nodes, Flux *d_fluxs, const int num_elements, const double gamma)
 {
     const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -287,7 +285,7 @@ __global__ void rhs_kernel(const Cell *d_elements,
                            const Flux *d_fluxs,
                            const Flux *d_dfluxs,
                            const Vec4 *d_face_fluxs,
-                           const JMatrix2d *d_jacobian_invT,
+                           const Matrix2d *d_jacobian_invT,
                            const double *d_jacobian_det,
                            const double *d_jacobian_face,
                            Vec4 *d_rhs,
@@ -300,6 +298,10 @@ __global__ void rhs_kernel(const Cell *d_elements,
     }
 
     const Cell &cell = d_elements[i];
+    if (!cell.isValid)
+    {
+        return;
+    }
     const Flux *flux = d_fluxs + i * 9;
     const Flux *dflux = d_dfluxs + i * 9;
     const Face &bottom_face = d_faces[cell.faceIds[0]];
@@ -314,7 +316,7 @@ __global__ void rhs_kernel(const Cell *d_elements,
     const double right_face_jacobian = d_jacobian_face[cell.faceIds[1]];
     const double top_face_jacobian = d_jacobian_face[cell.faceIds[2]];
     const double left_face_jacobian = d_jacobian_face[cell.faceIds[3]];
-    const JMatrix2d *jacobian_invT = d_jacobian_invT + i * 9;
+    const Matrix2d *jacobian_invT = d_jacobian_invT + i * 9;
     const double *jacobian_det = d_jacobian_det + i * 9;
     Vec4 *rhs = d_rhs + i * 9;
 
@@ -344,7 +346,7 @@ void calculate_rhs(const Cell *d_elements,
                    const Flux *d_fluxs,
                    const Flux *d_dfluxs,
                    const Vec4 *d_face_fluxs,
-                   const JMatrix2d *d_jacobian_invT,
+                   const Matrix2d *d_jacobian_invT,
                    const double *d_jacobian_det,
                    const double *d_jacobian_face,
                    Vec4 *d_rhs,

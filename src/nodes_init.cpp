@@ -25,7 +25,7 @@ void init_inf_nodes(const Mesh &mesh, Vec4 *nodes, const double u_inf, const dou
     auto getP = [&](int cellId, int nodeId) -> Vec4
     {
         auto [xi, eta] = gll_2d(nodeId);
-        auto [x, y] = interpolate({mesh.vertices[mesh.elements[cellId].vertexIds[0]],
+        auto [x, y] = interpolate_q4({mesh.vertices[mesh.elements[cellId].vertexIds[0]],
                                    mesh.vertices[mesh.elements[cellId].vertexIds[1]],
                                    mesh.vertices[mesh.elements[cellId].vertexIds[2]],
                                    mesh.vertices[mesh.elements[cellId].vertexIds[3]]},

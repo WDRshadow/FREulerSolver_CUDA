@@ -1,14 +1,14 @@
 #include "jacobian.cuh"
 #include "shape_f.h"
 
-JMatrix2d jacobian_cell(const Mesh &mesh, const int cellId, const int nodeId)
+Matrix2d jacobian_cell(const Mesh &mesh, const int cellId, const int nodeId)
 {
     const auto &cell = mesh.elements[cellId];
     const auto [xi, eta] = gll_2d(nodeId);
-    JMatrix2d J{};
+    Matrix2d J{};
     for (int i = 0; i < 4; ++i)
     {
-        auto [dN_dxi, dN_deta] = dshape(i, xi, eta);
+        auto [dN_dxi, dN_deta] = dshape_q4(i, xi, eta);
         J.J[0][0] += mesh.vertices[cell.vertexIds[i]].x * dN_dxi;
         J.J[0][1] += mesh.vertices[cell.vertexIds[i]].x * dN_deta;
         J.J[1][0] += mesh.vertices[cell.vertexIds[i]].y * dN_dxi;
@@ -69,7 +69,7 @@ void calculate_jacobian_face(const Mesh &mesh, double *mesh_jacobian_face)
     }
 }
 
-void calculate_jacobian_cell(const Mesh &mesh, JMatrix2d *mesh_jacobian_cell_invT, double *mesh_jacobian_cell_det)
+void calculate_jacobian_cell(const Mesh &mesh, Matrix2d *mesh_jacobian_cell_invT, double *mesh_jacobian_cell_det)
 {
     for (int i = 0; i < mesh.numElements; ++i)
     {

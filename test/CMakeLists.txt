@@ -71,3 +71,15 @@ target_link_libraries(visualize_test
         fr
 )
 add_test(NAME visualize_test COMMAND visualize_test)
+
+# -----------------------------------------
+
+add_executable(limiter_test
+        limiter_test.cpp
+)
+target_link_libraries(limiter_test
+        PRIVATE
+        GTest::gtest_main
+        fr
+)
+add_test(NAME limiter_test COMMAND limiter_test)

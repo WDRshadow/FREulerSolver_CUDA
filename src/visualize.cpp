@@ -36,7 +36,7 @@ void writeVTU(const char *filename,
                     mesh.vertices[mesh.elements[cellId].vertexIds[1]],
                     mesh.vertices[mesh.elements[cellId].vertexIds[2]],
                     mesh.vertices[mesh.elements[cellId].vertexIds[3]]};
-                auto [x, y] = interpolate(pts, xi, eta);
+                auto [x, y] = interpolate_q4(pts, xi, eta);
 
                 int global_x = i * 3 + ii;
                 int global_y = j * 3 + jj;

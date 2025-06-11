@@ -40,6 +40,7 @@ public:
     ~FREulerSolver();
     void setGamma(double g);
     void set_fws_bc(const Vec4 &bc);
+    void set_tvb_limiter(double M = 0.0);
     void advance(double dt, int method = RK4);
     double getCurrentTime() const;
     void getNodes(Vec4 *h_nodes) const;
@@ -48,11 +49,13 @@ private:
     const int nx, ny;
     double currentTime = 0.0;
     double gamma = GAMMA;
+    bool isLimiter = false;
+    double M = 0.0;
     Vec4 bc_P = {1.4, 3.0, 0.0, 1.0};
 
     Cell *d_elements = nullptr;
     Face *d_faces = nullptr;
-    JMatrix2d *d_jacobian_invT = nullptr;
+    Matrix2d *d_jacobian_invT = nullptr;
     double *d_jacobian_det = nullptr;
     double *d_jacobian_face = nullptr;
 
@@ -60,7 +63,9 @@ private:
     FREulerCache k2;
     FREulerCache k3;
     FREulerCache k4;
+    Vec4 *d_tmp_nodes = nullptr;
 
+    void limit(const FREulerCache &cache);
     void computeRHS(const FREulerCache &cache) const;
 };
 
