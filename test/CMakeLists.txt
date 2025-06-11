@@ -83,3 +83,15 @@ target_link_libraries(limiter_test
         fr
 )
 add_test(NAME limiter_test COMMAND limiter_test)
+
+# -----------------------------------------
+
+add_executable(parser_test
+        parser_test.cpp
+)
+target_link_libraries(parser_test
+        PRIVATE
+        GTest::gtest_main
+        fr
+)
+add_test(NAME parser_test COMMAND parser_test)

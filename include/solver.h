@@ -47,10 +47,11 @@ public:
 
 private:
     const int nx, ny;
+    const double h;
     double currentTime = 0.0;
     double gamma = GAMMA;
     bool isLimiter = false;
-    double M = 0.0;
+    double Mh2 = 0.0;
     Vec4 bc_P = {1.4, 3.0, 0.0, 1.0};
 
     Cell *d_elements = nullptr;
