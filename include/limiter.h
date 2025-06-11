@@ -11,6 +11,8 @@ void tvd_limiter(
     int num_elements,
     const Vec4 &bc_Q,
     double gamma,
-    double Mh2 = 0);
+    const double hx,
+    const double hy,
+    double Mh2);
 
 #endif // LIMITER_H

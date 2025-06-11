@@ -40,7 +40,7 @@ FREulerCache::~FREulerCache()
 FREulerSolver::FREulerSolver(const Mesh &mesh, const Vec4 *h_nodes)
     : nx(mesh.nx), ny(mesh.ny), k1(FREulerCache(mesh)), k2(FREulerCache(mesh)),
       k3(FREulerCache(mesh)), k4(FREulerCache(mesh)),
-      h(std::min(mesh.width / mesh.nx, mesh.height / mesh.ny))
+      hx(mesh.width / mesh.nx), hy(mesh.height / mesh.ny)
 {
     k1.setNodes(h_nodes);
     auto *h_jacobian_invT = new Matrix2d[mesh.numElements * 9];
@@ -92,6 +92,7 @@ void FREulerSolver::set_fws_bc(const Vec4 &bc)
 void FREulerSolver::set_tvb_limiter(double M)
 {
     isLimiter = true;
+    const double h = std::min(hx, hy);
     Mh2 = M * h * h;
     cudaMalloc(&d_tmp_nodes, sizeof(Vec4) * k1.numElements * 9);
 }
@@ -133,12 +134,14 @@ void FREulerSolver::computeRHS(const FREulerCache &cache) const
         cache.numElements);
 }
 
-void FREulerSolver::limit(const FREulerCache &cache)
+void FREulerSolver::limit(FREulerCache &cache)
 {
     if (isLimiter)
     {
-        tvd_limiter(d_elements, d_faces, cache.d_nodes, d_tmp_nodes, cache.numElements, bc_P, gamma, Mh2);
-        cudaMemcpy(cache.d_nodes, d_tmp_nodes, sizeof(Vec4) * cache.numElements * 9, cudaMemcpyDeviceToDevice);
+        tvd_limiter(d_elements, d_faces, cache.d_nodes, d_tmp_nodes, cache.numElements, bc_P, gamma, hx, hy, Mh2);
+        Vec4 *tmp = cache.d_nodes;
+        cache.d_nodes = d_tmp_nodes;
+        d_tmp_nodes = tmp;
     }
 }
 

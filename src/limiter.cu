@@ -26,113 +26,113 @@ __device__ double minmod(double a, double b, double c)
 
 __device__ double tvb(double a, double b, double c, double Mh2)
 {
-    double minmod_value = minmod(a, b, c);
-    if (minmod_value == 0.0)
-    {
-        return 0.0;
-    }
-    double result = fmin(fabs(minmod_value), Mh2);
-    return minmod_value > 0 ? result : -result;
+    if (fabs(a) <= Mh2)
+        return a;
+    return minmod(a, b, c);
 }
 
 __device__ void eigenDecomposeX(const Vec4 &U, Matrix4d &RX, Matrix4d &RinvX, const double gamma)
 {
     const double c = sqrt(gamma * _p / _rho);
     const double H = (_e + _p) / _rho;
+    const double u = _u;
+    const double v = _v;
+    const double ke = 0.5 * (u * u + v * v);
 
     RX.J[0][0] = 1.0;
-    RX.J[1][0] = _u - c;
-    RX.J[2][0] = _v;
-    RX.J[3][0] = H - _u * c;
+    RX.J[1][0] = u - c;
+    RX.J[2][0] = v;
+    RX.J[3][0] = H - u * c;
 
     RX.J[0][1] = 1.0;
-    RX.J[1][1] = _u;
-    RX.J[2][1] = _v;
-    RX.J[3][1] = 0.5 * (_u * _u + _v * _v);
+    RX.J[1][1] = u;
+    RX.J[2][1] = v;
+    RX.J[3][1] = ke;
 
     RX.J[0][2] = 0.0;
     RX.J[1][2] = 0.0;
     RX.J[2][2] = 1.0;
-    RX.J[3][2] = _v;
+    RX.J[3][2] = v;
 
     RX.J[0][3] = 1.0;
-    RX.J[1][3] = _u + c;
-    RX.J[2][3] = _v;
-    RX.J[3][3] = H + _u * c;
+    RX.J[1][3] = u + c;
+    RX.J[2][3] = v;
+    RX.J[3][3] = H + u * c;
 
+    const double inv_H_ke = 1.0 / (H - ke);
     const double inv_c = 1.0 / c;
-    const double inv_c2 = inv_c * inv_c;
-    const double gm1 = gamma - 1.0;
 
-    RinvX.J[0][0] = gm1 * (_u * _u + _v * _v) / (2.0 * c * c) + _u * inv_c;
-    RinvX.J[0][1] = -gm1 * _u * inv_c2 - inv_c;
-    RinvX.J[0][2] = -gm1 * _v * inv_c2;
-    RinvX.J[0][3] = gm1 * inv_c2;
+    RinvX.J[0][0] = (H * u - c * ke + c * (u * u + v * v) - ke * u) * 0.5 * inv_c * inv_H_ke;
+    RinvX.J[0][1] = (-H - c * u + ke) * 0.5 * inv_c * inv_H_ke;
+    RinvX.J[0][2] = -v * 0.5 * inv_H_ke;
+    RinvX.J[0][3] = 0.5 * inv_H_ke;
 
-    RinvX.J[1][0] = 1.0 - gm1 * (_u * _u + _v * _v) * inv_c2;
-    RinvX.J[1][1] = gm1 * _u * inv_c2;
-    RinvX.J[1][2] = gm1 * _v * inv_c2;
-    RinvX.J[1][3] = -gm1 * inv_c2;
+    RinvX.J[1][0] = (H - (u * u + v * v)) * inv_H_ke;
+    RinvX.J[1][1] = u * inv_H_ke;
+    RinvX.J[1][2] = v * inv_H_ke;
+    RinvX.J[1][3] = -inv_H_ke;
 
-    RinvX.J[2][0] = -_v;
+    RinvX.J[2][0] = -v;
     RinvX.J[2][1] = 0.0;
     RinvX.J[2][2] = 1.0;
     RinvX.J[2][3] = 0.0;
 
-    RinvX.J[3][0] = gm1 * (_u * _u + _v * _v) / (2.0 * c * c) - _u * inv_c;
-    RinvX.J[3][1] = -gm1 * _u * inv_c2 + inv_c;
-    RinvX.J[3][2] = -gm1 * _v * inv_c2;
-    RinvX.J[3][3] = gm1 * inv_c2;
+    RinvX.J[3][0] = (-H * u - c * ke + c * (u * u + v * v) + ke * u) * 0.5 * inv_c * inv_H_ke;
+    RinvX.J[3][1] = (H - c * u - ke) * 0.5 * inv_c * inv_H_ke;
+    RinvX.J[3][2] = -v * 0.5 * inv_H_ke;
+    RinvX.J[3][3] = 0.5 * inv_H_ke;
 }
 
 __device__ void eigenDecomposeY(const Vec4 &U, Matrix4d &RY, Matrix4d &RinvY, const double gamma)
 {
     const double c = sqrt(gamma * _p / _rho);
     const double H = (_e + _p) / _rho;
+    const double u = _u;
+    const double v = _v;
+    const double ke = 0.5 * (u * u + v * v);
 
     RY.J[0][0] = 1.0;
-    RY.J[1][0] = _v - c;
-    RY.J[2][0] = _u;
-    RY.J[3][0] = H - _v * c;
+    RY.J[1][0] = u;
+    RY.J[2][0] = v - c;
+    RY.J[3][0] = H - v * c;
 
     RY.J[0][1] = 1.0;
-    RY.J[1][1] = _v;
-    RY.J[2][1] = _u;
-    RY.J[3][1] = 0.5 * (_v * _v + _u * _u);
+    RY.J[1][1] = u;
+    RY.J[2][1] = v;
+    RY.J[3][1] = ke;
 
     RY.J[0][2] = 0.0;
-    RY.J[1][2] = 1.0;
+    RY.J[1][2] = -1.0;
     RY.J[2][2] = 0.0;
-    RY.J[3][2] = _u;
+    RY.J[3][2] = -u;
 
     RY.J[0][3] = 1.0;
-    RY.J[1][3] = _v + c;
-    RY.J[2][3] = _u;
-    RY.J[3][3] = H + _v * c;
+    RY.J[1][3] = u;
+    RY.J[2][3] = v + c;
+    RY.J[3][3] = H + v * c;
 
+    const double inv_H_ke = 1.0 / (H - ke);
     const double inv_c = 1.0 / c;
-    const double inv_c2 = inv_c * inv_c;
-    const double gm1 = gamma - 1.0;
 
-    RinvY.J[0][0] = gm1 * (_v * _v + _u * _u) / (2.0 * c * c) + _v * inv_c;
-    RinvY.J[0][1] = -gm1 * _v * inv_c2 - inv_c;
-    RinvY.J[0][2] = -gm1 * _u * inv_c2;
-    RinvY.J[0][3] = gm1 * inv_c2;
+    RinvY.J[0][0] = (H * v - c * ke + c * (u * u + v * v) - ke * v) * 0.5 * inv_c * inv_H_ke;
+    RinvY.J[0][1] = -u * 0.5 * inv_H_ke;
+    RinvY.J[0][2] = (-H - c * v + ke) * 0.5 * inv_c * inv_H_ke;
+    RinvY.J[0][3] = 0.5 * inv_H_ke;
 
-    RinvY.J[1][0] = 1.0 - gm1 * (_v * _v + _u * _u) * inv_c2;
-    RinvY.J[1][1] = gm1 * _v * inv_c2;
-    RinvY.J[1][2] = gm1 * _u * inv_c2;
-    RinvY.J[1][3] = -gm1 * inv_c2;
+    RinvY.J[1][0] = (H - (u * u + v * v)) * inv_H_ke;
+    RinvY.J[1][1] = u * inv_H_ke;
+    RinvY.J[1][2] = v * inv_H_ke;
+    RinvY.J[1][3] = -inv_H_ke;
 
-    RinvY.J[2][0] = -_u;
-    RinvY.J[2][1] = 1.0;
+    RinvY.J[2][0] = u;
+    RinvY.J[2][1] = -1.0;
     RinvY.J[2][2] = 0.0;
     RinvY.J[2][3] = 0.0;
 
-    RinvY.J[3][0] = gm1 * (_v * _v + _u * _u) / (2.0 * c * c) - _v * inv_c;
-    RinvY.J[3][1] = -gm1 * _v * inv_c2 + inv_c;
-    RinvY.J[3][2] = -gm1 * _u * inv_c2;
-    RinvY.J[3][3] = gm1 * inv_c2;
+    RinvY.J[3][0] = (-H * v - c * ke + c * (u * u + v * v) + ke * v) * 0.5 * inv_c * inv_H_ke;
+    RinvY.J[3][1] = -u * 0.5 * inv_H_ke;
+    RinvY.J[3][2] = (H - c * v - ke) * 0.5 * inv_c * inv_H_ke;
+    RinvY.J[3][3] = 0.5 * inv_H_ke;
 }
 
 __device__ __forceinline__ Vec4 cell_mean(const Vec4 *nodes)
@@ -146,7 +146,7 @@ __device__ __forceinline__ Vec4 cell_mean(const Vec4 *nodes)
         1.0 / 9.0,
         1.0 / 36.0,
         1.0 / 9.0,
-        4.0 / 36.0};
+        4.0 / 9.0};
     Vec4 mean{};
     for (int i = 0; i < 9; ++i)
     {
@@ -170,8 +170,8 @@ __device__ void limiter_1d(
     const Matrix4d &Rinv,
     Vec4 &new_local_left,
     Vec4 &new_local_right,
-    const double gamma,
-    const double Mh2 = 0.0)
+    const double h,
+    const double Mh2)
 {
     const Vec4 left_mean_V = Rinv * left_mean;
     const Vec4 local_mean_V = Rinv * local_mean;
@@ -179,20 +179,19 @@ __device__ void limiter_1d(
     const Vec4 local_left_V = Rinv * local_left;
     const Vec4 local_right_V = Rinv * local_right;
 
-    const Vec4 delta_left_V = local_mean_V - local_left_V;
-    const Vec4 delta_right_V = local_right_V - local_mean_V;
-    const Vec4 D_left_V = local_mean_V - left_mean_V;
-    const Vec4 D_right_V = right_mean_V - local_mean_V;
+    const Vec4 delta_V = (local_right_V - local_left_V) / h;
+    const Vec4 D_left_V = (local_mean_V - left_mean_V) / h;
+    const Vec4 D_right_V = (right_mean_V - local_mean_V) / h;
 
-    Vec4 delta_left_mod_V;
-    Vec4 delta_right_mod_V;
+    Vec4 delta_mod_V;
     for (int i = 0; i < 4; ++i)
     {
-        delta_left_mod_V[i] = tvb(delta_left_V[i], D_left_V[i], D_right_V[i], Mh2);
-        delta_right_mod_V[i] = tvb(delta_right_V[i], D_left_V[i], D_right_V[i], Mh2);
+        delta_mod_V[i] = tvb(delta_V[i], D_left_V[i], D_right_V[i], Mh2);
     }
-    new_local_left += (local_mean - R * delta_left_mod_V) * 0.5;
-    new_local_right += (local_mean + R * delta_right_mod_V) * 0.5;
+    const Vec4 local_left_mod = R * (local_mean_V - delta_mod_V * 0.5 * h);
+    const Vec4 local_right_mod = R * (local_mean_V + delta_mod_V * 0.5 * h);
+    new_local_left += local_left_mod * 0.5;
+    new_local_right += local_right_mod * 0.5;
 }
 
 __device__ __forceinline__ int idx(const int i, const int j)
@@ -234,7 +233,9 @@ __global__ void limiter_kernel(
     const int num_elements,
     const Vec4 bc_Q,
     const double gamma,
-    const double Mh2 = 0)
+    const double hx,
+    const double hy,
+    const double Mh2)
 {
     const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_elements)
@@ -309,7 +310,7 @@ __global__ void limiter_kernel(
         const Vec4 *top_node = d_nodes + top_face.rightCell * 9;
         for (int j = 0; j < 3; ++j)
         {
-            top_mean[j] = face_mean(top_node[idx(j, 0)], top_node[idx(j, 0)], top_node[idx(j, 0)]);
+            top_mean[j] = face_mean(top_node[idx(j, 0)], top_node[idx(j, 1)], top_node[idx(j, 2)]);
         }
     }
 
@@ -341,7 +342,7 @@ __global__ void limiter_kernel(
             RinvX,
             new_node[idx(0, j)],
             new_node[idx(2, j)],
-            gamma,
+            hx,
             Mh2);
         // Y
         new_node[idx(j, 1)] += local_mean_Y[j] * 0.5;
@@ -355,7 +356,7 @@ __global__ void limiter_kernel(
             RinvY,
             new_node[idx(j, 0)],
             new_node[idx(j, 2)],
-            gamma,
+            hy,
             Mh2);
     }
 }
@@ -368,10 +369,12 @@ void tvd_limiter(
     const int num_elements,
     const Vec4 &bc_Q,
     const double gamma,
+    const double hx,
+    const double hy,
     const double Mh2)
 {
     const int num_blocks = (num_elements + BLOCK_SIZE - 1) / BLOCK_SIZE;
     limiter_kernel<<<num_blocks, BLOCK_SIZE>>>(
-        d_cells, d_faces, d_nodes, d_new_nodes, num_elements, bc_Q, gamma, Mh2);
+        d_cells, d_faces, d_nodes, d_new_nodes, num_elements, bc_Q, gamma, hx, hy, Mh2);
     cudaDeviceSynchronize();
 }

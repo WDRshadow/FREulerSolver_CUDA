@@ -47,7 +47,7 @@ public:
 
 private:
     const int nx, ny;
-    const double h;
+    const double hx, hy;
     double currentTime = 0.0;
     double gamma = GAMMA;
     bool isLimiter = false;
@@ -66,7 +66,7 @@ private:
     FREulerCache k4;
     Vec4 *d_tmp_nodes = nullptr;
 
-    void limit(const FREulerCache &cache);
+    void limit(FREulerCache &cache);
     void computeRHS(const FREulerCache &cache) const;
 };
 

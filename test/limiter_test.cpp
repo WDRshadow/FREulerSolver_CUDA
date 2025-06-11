@@ -33,14 +33,14 @@ TEST(LIMITER, runtime)
     cudaMemcpy(d_faces, mesh.faces, sizeof(Face) * mesh.numFaces, cudaMemcpyHostToDevice);
     cudaMemcpy(d_nodes, h_nodes, sizeof(Vec4) * mesh.numElements * 9, cudaMemcpyHostToDevice);
     // ---------------------------------------------------
-    tvd_limiter(d_cells, d_faces, d_nodes, d_new_nodes, mesh.numElements, init_U, GAMMA);
+    tvd_limiter(d_cells, d_faces, d_nodes, d_new_nodes, mesh.numElements, init_U, GAMMA, 2, 2, 0.0);
     // ---------------------------------------------------
-    cudaMemcpy(h_nodes, d_nodes, sizeof(Vec4) * mesh.numElements * 9, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_nodes, d_new_nodes, sizeof(Vec4) * mesh.numElements * 9, cudaMemcpyDeviceToHost);
     // ---------------------------------------------------
-    EXPECT_DOUBLE_EQ(h_nodes[8][0], init_U[0]);
-    EXPECT_DOUBLE_EQ(h_nodes[8][1], init_U[1]);
-    EXPECT_DOUBLE_EQ(h_nodes[8][2], init_U[2]);
-    EXPECT_DOUBLE_EQ(h_nodes[8][3], init_U[3]);
+    EXPECT_NEAR(h_nodes[0][0], init_U[0], 1e-10);
+    EXPECT_NEAR(h_nodes[0][1], init_U[1], 1e-10);
+    EXPECT_NEAR(h_nodes[0][2], init_U[2], 1e-10);
+    EXPECT_NEAR(h_nodes[0][3], init_U[3], 1e-10);
     // ---------------------------------------------------
     cudaFree(d_cells);
     cudaFree(d_faces);
